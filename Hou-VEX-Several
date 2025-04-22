@@ -1,0 +1,69 @@
+# Surface Deformer #
+
+float amp = chf("amplitude");
+float freq = chf("frequency");
+
+vector n = @N;
+float noise = sin(@Time + snoise(@P * freq));
+@P += n * noise * amp;
+
+------------------------------------------------
+
+# Delete Points by Percentage #
+
+float percentage = chf("percent");
+float threshold = percentage / 100.0;
+
+if (rand(@ptnum * 123.456) > threshold) {
+    removepoint(0, @ptnum);
+}
+
+------------------------------------------------
+
+# Procedural Growth #
+
+if (@Frame == 1) {
+    int pt = addpoint(0, @P + normalize(@N) * 0.2);
+    setpointattrib(0, "age", pt, 0, "set");
+}
+
+int age = i@age;
+i@age = age + 1;
+
+------------------------------------------------
+
+# Velocity shockwave for Pyro sim #
+
+vector center = chv("center");
+vector dir = normalize(@P - center);
+@v = dir * chf("speed");
+
+------------------------------------------------
+
+# Procedural DNA #
+
+int num_pts = chi("points");
+float height = chf("height");
+float turns = chf("turns");
+float radius = chf("radius");
+float step = height / num_pts;
+
+for (int i = 0; i < num_pts; i++) {
+    float t = float(i) / num_pts;
+    float angle = t * turns * 2 * M_PI;
+
+    vector pos1 = set(cos(angle), i * step, sin(angle)) * radius;
+    vector pos2 = set(cos(angle + M_PI), i * step, sin(angle + M_PI)) * radius;
+
+    int pt1 = addpoint(0, pos1);
+    int pt2 = addpoint(0, pos2);
+
+    setpointattrib(0, "Cd", pt1, set(1,0,0), "set");
+    setpointattrib(0, "Cd", pt2, set(0,0,1), "set");
+
+    if (i > 0) {
+        addprim(0, "polyline", pt1 - 2, pt1);
+        addprim(0, "polyline", pt2 - 2, pt2);
+        addprim(0, "polyline", pt1 - 2, pt2);
+    }
+}
