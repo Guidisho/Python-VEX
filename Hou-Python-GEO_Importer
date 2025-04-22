@@ -1,0 +1,41 @@
+import os
+import hou
+
+ROOT = hou.node("/obj")
+extensions = ["obj", "fbx", "abc"]
+base_loader_name = "Imported_GEO"
+loader_name = base_loader_name
+suffix = 1
+
+while ROOT.node(loader_name):
+    suffix += 1
+    loader_name = f"{base_loader_name}_{suffix:02d}"
+
+obj_loader = ROOT.createNode("geo", loader_name)
+
+dir = hou.ui.selectFile(title="Select a directory", file_type=hou.fileType.Directory)
+expand_dir = hou.expandString(dir)
+obj_files = os.listdir(expand_dir)
+
+merge_node = obj_loader.createNode("merge", "merge_geo")
+
+for index, obj in enumerate(obj_files):
+    elements = obj.rpartition(".")
+    ext = elements[2].lower()
+    name = elements[0].lower()
+
+    if ext in extensions:
+        if ext == "abc":
+            file_node = obj_loader.createNode("alembic", name)
+            full_path = os.path.join(expand_dir, obj)
+            file_node.parm("fileName").set(full_path)
+        else:
+            file_node = obj_loader.createNode("file", name)
+            full_path = os.path.join(expand_dir, obj)
+            file_node.parm("file").set(full_path)
+
+        merge_node.setInput(index, file_node)
+
+obj_loader.layoutChildren()
+merge_node.setDisplayFlag(True)
+merge_node.setRenderFlag(True)
