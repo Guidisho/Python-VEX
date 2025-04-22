@@ -1,0 +1,41 @@
+import os
+import hou
+
+ROOT = hou.node("/obj")
+file_path = hou.ui.selectFile(title="Select Alembic File", file_type=hou.fileType.Any)
+file_path = hou.expandString(file_path)
+
+file_name = os.path.basename(file_path)
+name_no_ext = os.path.splitext(file_name)[0]
+
+geo_node = ROOT.createNode("geo", f"{name_no_ext}_geo")
+for child in geo_node.children():
+    child.destroy()
+
+abc_node = geo_node.createNode("alembic", name_no_ext)
+abc_node.parm("fileName").set(file_path)
+
+unpack_node = geo_node.createNode("unpack", "unpack1")
+unpack_node.setInput(0, abc_node)
+
+convert_node = geo_node.createNode("convert", "convert1")
+convert_node.setInput(0, unpack_node)
+convert_node.parm("totype").set(1)
+
+normal_node = geo_node.createNode("normal", "normal1")
+normal_node.setInput(0, convert_node)
+
+collision_node = geo_node.createNode("collisionsource", "collisionsource1")
+collision_node.setInput(0, normal_node)
+
+null_left = geo_node.createNode("null", "OUT_COLLISION_GEO")
+null_left.setInput(0, collision_node, 0)
+null_left.setDisplayFlag(True)
+null_left.setRenderFlag(True)
+null_left.setColor(hou.Color((0, 0, 0)))
+
+null_right = geo_node.createNode("null", "OUT_VDB_GEO")
+null_right.setInput(0, collision_node, 1)
+null_right.setColor(hou.Color((0, 0, 0)))
+
+geo_node.layoutChildren()
