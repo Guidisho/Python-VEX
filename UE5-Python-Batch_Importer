@@ -1,0 +1,53 @@
+import unreal
+import os
+
+import tkinter as tk
+from tkinter import filedialog
+
+def main():
+    root = tk.Tk()
+    root.withdraw()
+
+    source_folder = filedialog.askdirectory(title="Select folder with textures")
+
+    if not source_folder:
+        unreal.log_warning("No folder selected. Operation cancelled.")
+        return
+
+    unreal.log(f"Selected folder: {source_folder}")
+
+    destination_path = "/Game/ImportedTextures" 
+    naming_prefix = "T_"
+    valid_extensions = [".png", ".jpg", ".tga"]
+
+    all_files = os.listdir(source_folder)
+    texture_files = [f for f in all_files if os.path.splitext(f)[1].lower() in valid_extensions]
+
+    if not texture_files:
+        unreal.log_warning("No valid texture files found.")
+        return
+
+
+    def import_texture(file_path, asset_name, destination):
+        task = unreal.AssetImportTask()
+        task.filename = file_path
+        task.destination_path = destination
+        task.destination_name = asset_name
+        task.automated = True
+        task.save = True
+        task.options = unreal.TextureFactory()
+        unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+
+
+    for file in texture_files:
+        name_no_ext, _ = os.path.splitext(file)
+        asset_name = naming_prefix + name_no_ext
+        full_path = os.path.join(source_folder, file)
+
+        unreal.log(f"Importing {file} as {asset_name}")
+        import_texture(full_path, asset_name, destination_path)
+
+    unreal.log("All textures imported successfully.")
+
+
+main()
