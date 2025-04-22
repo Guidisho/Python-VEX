@@ -1,0 +1,21 @@
+sel = hou.selectedNodes()
+ROOT = hou.node("/obj")
+OUT = hou.node("/out")
+COLOR = hou.Color((0.075,0.3,0.075))
+PREFIX = "rndr_"
+NETBOX = ROOT.createNetworkBox()
+NETBOX.setColor(COLOR)
+NETBOX.setComment("RENDER")
+
+for node in sel:
+    node_name = node.name()
+    if not node_name.startswith(PREFIX):
+        node.setName(PREFIX + node_name)
+        node.setColor(COLOR)
+        NETBOX.addItem(node)
+    
+NETBOX.fitAroundContents()
+
+mantra = OUT.createNode("ifd", "RENDER")
+mantra.parm("vobject").set("")
+mantra.parm("forceobject").set("rndr_*")
