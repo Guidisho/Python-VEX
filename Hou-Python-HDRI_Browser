@@ -1,0 +1,99 @@
+import glob
+import os
+import hou
+
+from PySide2 import QtGui as gui
+from PySide2 import QtCore as core
+from PySide2 import QtWidgets as wdg
+
+filetype = "exr"
+
+class HdrBrowser(wdg.QWidget):
+    def __init__(self, parent=None):
+        super(HdrBrowser, self).__init__(parent)
+        self.setWindowTitle("HDR Browser")
+        self.setWindowFlags(core.Qt.Window)
+        self.resize(1000, 700)
+
+        self.hdr_path = hou.ui.selectFile(title="Select HDR Path", file_type=hou.fileType.Directory)
+        if not self.hdr_path:
+            return
+        self.hdr_path = hou.expandString(self.hdr_path)
+
+        self.initUI()
+        
+    def initUI(self):
+        scroll_area = wdg.QScrollArea()
+        scroll_widget = wdg.QWidget()
+        grid = wdg.QGridLayout(scroll_widget)
+
+        hdrs = self.get_files_of_type(self.hdr_path, filetype)
+        self.buttonGroup = wdg.QButtonGroup(self)
+        self.buttonGroup.buttonClicked[int].connect(self.keyclick)
+
+        row = 0
+        column = 0
+
+        for i, hdr in enumerate(hdrs):
+            font = gui.QFont()
+            font.setPointSize(9)
+            btn = wdg.QToolButton()
+            btn.setToolButtonStyle(core.Qt.ToolButtonTextUnderIcon)
+            btn.setText(os.path.basename(hdr))
+            btn.setFont(font)
+            btn.setFixedSize(220, 240)
+            btn.setSizePolicy(wdg.QSizePolicy.Fixed, wdg.QSizePolicy.Fixed)
+
+            icon = gui.QIcon()
+
+            thumb_path_base = os.path.splitext(hdr)[0]
+            thumbnail = thumb_path_base + ".jpg"
+            if not os.path.exists(thumbnail):
+                thumbnail = thumb_path_base + ".JPG"
+
+            if os.path.exists(thumbnail):
+                img_pix = gui.QPixmap(thumbnail).scaled(200, 200, core.Qt.KeepAspectRatio)
+            else:
+                img_pix = gui.QPixmap(200, 200)
+                img_pix.fill(core.Qt.darkGray)
+
+            icon.addPixmap(img_pix)
+            btn.setIcon(icon)
+            btn.setIconSize(core.QSize(200, 200))
+
+            self.buttonGroup.addButton(btn, i)
+            grid.addWidget(btn, row, column)
+            column += 1
+            if column == 4:
+                column = 0
+                row += 1
+
+        scroll_area.setWidget(scroll_widget)
+        scroll_area.setWidgetResizable(True)
+
+        layout = wdg.QVBoxLayout(self)
+        layout.addWidget(scroll_area)
+        self.setLayout(layout)
+                
+    def keyclick(self, key):
+        hdr = self.buttonGroup.button(key).text()
+        full_path = None
+        for f in self.get_files_of_type(self.hdr_path, filetype):
+            if os.path.basename(f) == hdr:
+                full_path = f
+                break
+        if full_path:
+            root = hou.node("/obj")
+            envlight = root.createNode("envlight")
+            envlight.parm("env_map").set(full_path)
+        
+    def get_files_of_type(self, dir, filetype):
+        hdr_files = []
+        for x in os.walk(dir):
+            for y in glob.glob(os.path.join(x[0], f"*.{filetype}")):
+                hdr_files.append(y)
+        return hdr_files
+
+parent = hou.ui.mainQtWindow()
+explorer = HdrBrowser(parent)
+explorer.show()
